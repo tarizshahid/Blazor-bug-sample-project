@@ -1,0 +1,140 @@
+﻿@page "/"
+@using Globe.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using MudBlazor
+@using System.Timers
+
+@* tried using rendermode doesn't work as well *@
+
+<title>Publishers</title>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.h1" Class="page-title">Publishers</MudText>
+
+    <div class="search-container">
+        <div>
+            <MudTextField Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Variant="Variant.Outlined"
+                          T="string"
+                          Immediate="true"
+                          ValueChanged="@(s=>OnSearch(s))"
+                          Placeholder="Search by Publisher Name"
+                          Class="search-input">
+            </MudTextField>
+        </div>
+    </div>
+
+    <div>
+        <MudTable @ref="pubTable"
+                  T="Publisher"
+                  ServerData="@LoadServerData"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true">
+            <HeaderContent>
+                <MudTh Class="custom-header">Publisher ID</MudTh>
+                <MudTh Class="custom-header">Publisher Code</MudTh>
+                <MudTh Class="custom-header">Publisher Name</MudTh>
+                <MudTh Class="custom-header">Action</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Publisher ID">@context.PubId</MudTd>
+                <MudTd DataLabel="Publisher Code">@context.PubCode</MudTd>
+                <MudTd DataLabel="Publisher Name">@context.PubName</MudTd>
+                <MudTd DataLabel="Action">
+                    <MudStack Row Class="w-auto">
+                        <MudIconButton Title="Sites"
+                                       Class="btn btn-ico btn-green"
+                                       Size="@Size.Small"
+                                       Variant="@Variant.Outlined">
+                            <i class="icon-sites"></i>
+                        </MudIconButton>
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </div>
+</MudContainer>
+
+@code {
+    private MudTable<Publisher> pubTable;
+    private string searchTerm = string.Empty;
+    private System.Timers.Timer? _debounceTimer;
+    private const int DebounceDelay = 500;
+
+    private void OnSearch(string text)
+    {
+        searchTerm = text;
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+
+        _debounceTimer = new System.Timers.Timer(DebounceDelay);
+        _debounceTimer.Elapsed += async (sender, e) =>
+        {
+            await InvokeAsync(() =>
+            {
+                pubTable.ReloadServerData();
+                _debounceTimer.Stop();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    private async Task<TableData<Publisher>> LoadServerData(TableState tableState, CancellationToken token)
+    {
+        // Hardcoded data
+        var publishers = new List<Publisher>
+        {
+            new Publisher { PubId = 1, PubCode = "PUB001", PubName = "Publisher One" },
+            new Publisher { PubId = 2, PubCode = "PUB002", PubName = "Publisher Two" },
+            new Publisher { PubId = 3, PubCode = "PUB003", PubName = "Publisher Three" },
+            new Publisher { PubId = 4, PubCode = "PUB004", PubName = "Publisher Four" },
+            new Publisher { PubId = 5, PubCode = "PUB005", PubName = "Publisher Five" },
+            new Publisher { PubId = 6, PubCode = "PUB006", PubName = "Publisher Six" },
+            new Publisher { PubId = 7, PubCode = "PUB007", PubName = "Publisher Seven" },
+            new Publisher { PubId = 8, PubCode = "PUB008", PubName = "Publisher Eight" },
+            new Publisher { PubId = 9, PubCode = "PUB009", PubName = "Publisher Nine" },
+            new Publisher { PubId = 10, PubCode = "PUB010", PubName = "Publisher Ten" },
+            new Publisher { PubId = 11, PubCode = "PUB011", PubName = "Publisher Eleven" },
+            new Publisher { PubId = 12, PubCode = "PUB012", PubName = "Publisher Twelve" },
+            new Publisher { PubId = 13, PubCode = "PUB013", PubName = "Publisher Thirteen" },
+            new Publisher { PubId = 14, PubCode = "PUB014", PubName = "Publisher Fourteen" },
+            new Publisher { PubId = 15, PubCode = "PUB015", PubName = "Publisher Fifteen" }
+        };
+
+        // Filter by search term if applicable
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            publishers = publishers
+                .Where(p => p.PubName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        // Paginate
+        var paginatedItems = publishers
+            .Skip(tableState.Page * tableState.PageSize)
+            .Take(tableState.PageSize)
+            .ToList();
+
+        return new TableData<Publisher>
+            {
+                Items = paginatedItems,
+                TotalItems = publishers.Count
+            };
+    }
+
+    protected override void OnInitialized()
+    {
+        // Removed async method
+        base.OnInitialized();
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}
